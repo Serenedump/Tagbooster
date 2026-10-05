@@ -72,7 +72,7 @@ button:active{transform:scale(.97)}
 
 <details open><summary>Ready to post</summary><div class="g">
  <div class="full"><label for="cap">Caption (edit it if you like)</label><textarea class="f" id="cap" style="min-height:90px"></textarea></div>
- <div class="full"><label for="hash">Today's tag (the organizer types it once)</label><input class="f" id="hash" placeholder="#WillAshley" autocomplete="off"></div>
+ <div class="full"><label for="hash">Today's tag or words (set once by the organizer)</label><input class="f" id="hash" placeholder="#WillAshley" autocomplete="off"></div>
  <div class="full"><label>Final post <span id="cnt"></span></label><div class="final" id="final"></div></div>
  <div class="full"><label>Pick a caption. Each one can be used only once.</label><div id="opts"></div><button class="alt sm" id="newcap" style="margin-top:8px">Show other captions</button><p class="note" id="left"></p></div>
  <div><button class="sm" id="cpost">Copy post text</button></div><div><button class="alt sm" id="cimg">Copy picture</button></div>
@@ -334,10 +334,13 @@ const slug=x=>x.toLowerCase().replace(/[^a-z0-9]/g,'');
 let USED=new Set(),LOCAL=new Set(),cur=null,D=null,A=null,DL=null,ED=true,MEDIA=[];
 try{LOCAL=new Set(JSON.parse(localStorage.getItem('tbused')||'[]'));USED=new Set(LOCAL)}catch(e){}
 const uk=id=>(slug($('hash').value)||'none')+'_'+$('lang').value+'_'+id;
+const CL={en:["Let's go!","Thank you!","Together we rise!","Every bit helps!","We got this!","Keep it going!"],tl:["Tara na!","Salamat po!","Sama-sama tayo!","Malaking tulong ito!","Kaya natin ito!","Ituloy lang natin!"]};
+const strip=t=>t.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu,'').replace(/\s+/g,' ').trim();
+const okCap=t=>!/\d/.test(t)&&t.split(/\s+/).length>3;
 function items(){
- const lg=$('lang').value,fx=(CAPS[theme]&&CAPS[theme][lg])||[],a=fx.map((t,i)=>({id:'f'+slug(theme)+i,t}));
- OP[lg].forEach((o,i)=>MI[lg].forEach((m,j)=>EM.forEach((e,k)=>a.push({id:'c'+i+j+k,t:o+' '+m+' '+e}))));
- return a.filter(x=>!USED.has(uk(x.id)));
+ const lg=$('lang').value,fx=(CAPS[theme]&&CAPS[theme][lg])||[],a=fx.map((t,i)=>({id:'f'+slug(theme)+i,t:strip(t)}));
+ OP[lg].forEach((o,i)=>MI[lg].forEach((m,j)=>CL[lg].forEach((e,k)=>a.push({id:'c'+i+j+k,t:o+' '+m+' '+e}))));
+ return a.filter(x=>okCap(x.t)&&!USED.has(uk(x.id)));
 }
 function autoHash(){}
 function newCap(){renderOpts()}
@@ -399,8 +402,8 @@ $('mf').onchange=async()=>{
 (async()=>{
  renderMedia();
  if(!(window.claude&&claude.use)){
-  const q=new URLSearchParams(location.search).get('tag');
-  if(q){$('hash').value=q.split(/[\s,]+/).filter(Boolean).map(t=>'#'+t.replace(/^#/,'')).join(' ');$('hash').readOnly=true;renderOpts();updatePost()}
+  const P=new URLSearchParams(location.search),q=P.get('tag'),w=P.get('text');
+  if(q||w){$('hash').value=[w||'',(q||'').split(/[\s,]+/).filter(Boolean).map(t=>'#'+t.replace(/^#/,'')).join(' ')].filter(Boolean).join(' ');$('hash').readOnly=true;renderOpts();updatePost()}
   else try{const c=await(await fetch('config.json',{cache:'no-store'})).json();$('hash').value=c.tag||'';$('hash').readOnly=!!c.tag;renderOpts();updatePost()}catch(e){}
   try{const j=await(await fetch('media.json',{cache:'no-store'})).json();
    MEDIA=j.map((f,i)=>({id:'s'+i,url:f,name:f.split('/').pop(),type:/\.(mp4|webm|mov)$/i.test(f)?'video/mp4':/\.gif$/i.test(f)?'image/gif':/\.png$/i.test(f)?'image/png':'image/jpeg'}));ED=false;renderMedia()}catch(e){}
